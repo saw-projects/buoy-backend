@@ -1,0 +1,10 @@
+asyncio
+dotenv
+fastapi==0.104.1
+pydantic==2.11.3
+pydantic_core==2.33.1
+python-dotenv==1.1.1
+requests==2.32.4
+shortuuid==1.0.13
+sqlite3
+uvicorn==0.24.0

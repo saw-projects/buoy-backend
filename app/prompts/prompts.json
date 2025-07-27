@@ -1,0 +1,6 @@
+{
+    "prompts": {
+        "BASE_SYSTEM_PROMPT": "app/prompts/base_system_prompt.txt",
+        "PROTOTYPE_BASE_SYSTEM_PROMPT": "app/prompts/prototype_base_system_prompt.txt"
+    }
+}
