@@ -1,7 +1,8 @@
 import sqlite3
 import datetime
+import pathlib
 
-DB_PATH = "./data/data.db"
+DB_PATH = pathlib.Path(__file__).parent / "data/data.db"
 
 # Data Access Layer for API
 """Database Functions Provided:
@@ -27,7 +28,7 @@ def create_user(email: str, login_method: str = "None"):
             conn.commit()
             return user_id
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        print(f"Database error (create_user): {e}")
 
 
 def update_tokens_by_user_id(user_id: str, tokens: int):
@@ -41,7 +42,7 @@ def update_tokens_by_user_id(user_id: str, tokens: int):
             )
             conn.commit()
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        print(f"Database error (update_tokens_by_user_id): {e}")
 
 
 def create_job(job_id: str, user_id: int, input_text: str, result_text: str = None):
@@ -54,9 +55,10 @@ def create_job(job_id: str, user_id: int, input_text: str, result_text: str = No
             )
             job_id = cur.lastrowid
             conn.commit()
-            return job_id
+            return True
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        print(f"Database error (create_job): {e}")
+        return False
 
 
 def update_job(job_id: str, result_text: str):
@@ -64,22 +66,22 @@ def update_job(job_id: str, result_text: str):
         with get_connection() as conn:
             cur = conn.cursor()
             cur.execute(
-                "UPDATE jobs SET result_text = ?, updated_at = ? WHERE id = ?",
-                (result_text, datetime.utcnow(), job_id)
+                "UPDATE jobs SET result_text = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (result_text, job_id)
             )
             conn.commit()
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        print(f"Database error (update_job): {e}")
 
 
 def job_exists(job_id: str):
     try:
         with get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT 1 FROM jobs WHERE id = ? LIMIT 1", (job_id))
+            cur.execute("SELECT 1 FROM jobs WHERE id = ? LIMIT 1", (job_id,))
             return cur.fetchone() is not None
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        print(f"Database error (job_exists): {e}")
 
 
 def get_result_text_by_job_id(job_id: str):
@@ -93,7 +95,7 @@ def get_result_text_by_job_id(job_id: str):
             row = cur.fetchone()
             return row[0] if row else None
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        print(f"Database error (get_result_text_by_job_id): {e}")
 
 
 if __name__ == "__main__":

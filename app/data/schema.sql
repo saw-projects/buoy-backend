@@ -1,7 +1,11 @@
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email VARCHAR(255) UNIQUE NOT NULL,
-    login_method VARCHAR(255) NOT NULL,
+    auth_provider VARCHAR(255) NOT NULL,
+    auth_jwt VARCHAR(255),
+    auth_jwt_last_updated TIMESTAMP,
+    frontend_jwt VARCHAR(255),
+    frontend_jwt_last_updated TIMESTAMP,
     input_tokens INTEGER DEFAULT 0,
     output_tokens INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

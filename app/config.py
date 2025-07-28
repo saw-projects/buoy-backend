@@ -1,12 +1,17 @@
 # config.py
 from dotenv import load_dotenv
 import os
+import pathlib
+
+BASE_PATH = pathlib.Path(__file__).parent
 
 load_dotenv()
 
 # backend API details
-API_VERSION = "/api/v1"
-PROMPT_FILE = "./app/prompts/prototype_base_system_prompt.txt"
+PROMPT_FILE = BASE_PATH / "prompts/prototype_base_system_prompt.txt"
+PROMPT_FILE = str(PROMPT_FILE)
+
+# load prompt
 with open(PROMPT_FILE, 'r') as file:
     SYSTEM_PROMPT = file.read()
 

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, constr
 import asyncio
@@ -7,16 +7,25 @@ import requests
 
 # project files
 from config import CLAUDE_API_KEY, CLAUDE_MODEL, CLAUDE_API_ROUTE, MAX_TOKENS, ANTHROPIC_VERSION
-from config import API_VERSION, SYSTEM_PROMPT
+from config import SYSTEM_PROMPT
 import database as db
+from routers import auth, jobs
+from routers.v1.api import router as api_v1
+
 
 # =================== Hardcode Values =============================
 MAX_CHAR_COUNT = 400
 MIN_CHAR_COUNT = 15
 TEST_USER = "1"
 
+API_VERSION = "/api/v1"
+
 # =================== APP SETUP =============================
 app = FastAPI()
+
+app.include_router(api_v1.router, prefix=["/api/v1"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
 
 # Enable CORS
 app.add_middleware(
@@ -42,7 +51,7 @@ class QueryRequest(BaseModel):
 
 
 @app.post(f"{API_VERSION}/process_query/{{user_id}}")
-async def process_query(user_id: str, request: QueryRequest = None):
+async def process_query(request: Request,user_id: str, query: QueryRequest = None):
     """Accepts a query from a user, processes it using an ai model,
      and then returns the response.
 
@@ -50,15 +59,19 @@ async def process_query(user_id: str, request: QueryRequest = None):
     # TODO: add logging, timing of requests, etc...
     """
     try:
+        if not valid_user(user_id):
+            raise Exception("Invalid user")
         # validate query
-        if valid_query(request.message):
-            job_id = start_job(user_id, request.message)
+        if valid_query(query.message):
+            job_id = await start_job(user_id, query.message)
 
-            base_url = "http://localhost:3000"
+            base_url = str(request.base_url)
+            return_url = f"{base_url}{API_VERSION}/job_status/{job_id}"
+            print(f"return URL: {return_url}")
             return {
                 "status": "success",
                 "job_id": job_id,
-                "job_status_URL": f"{base_url}{API_VERSION}/job_status/{job_id}"
+                "job_status_URL": return_url
             }
         else:
             print("Invalid Input")
@@ -79,8 +92,11 @@ async def job_status(job_id: str):
     """An endpoint to poll to check on job status.
     """
     try:
+        print(f"Checking job status for job_id: {job_id}")
         if db.job_exists(job_id=job_id):
+            print(f"Job {job_id} exists")
             result = db.get_result_text_by_job_id(job_id=job_id)
+            print(f"Result: {result}")
             if result is None:
                 status = "processing"
             else:
@@ -93,10 +109,10 @@ async def job_status(job_id: str):
         else:
             raise Exception
     except Exception as e:
-        print(f"Error processing request: {str(e)}")
+        print(f"Error polling job status: {str(e)}")
         return {
             "status": "error",
-            "message": f"Error processing request: {str(e)}"
+            "message": f"Error polling job status: {str(e)}"
         }
 
 
@@ -107,17 +123,21 @@ def get_job_id():
 async def start_job(user_id: str, user_query: str):
     try:
         job_id = get_job_id()
+        print(f"Job: {job_id} started")
+        print(f"job id type: {type(job_id)}")
         full_prompt = f"{SYSTEM_PROMPT.strip()}\n\nHuman: {user_query.strip()}\n\nAssistant:"
         # start request to LLM
         asyncio.create_task(process_job(job_id, full_prompt))
-        job_id = db.create_job(job_id=job_id, user_id=user_id, input_text=full_prompt)
-        print(f"Job: {job_id} started")
-        return job_id
+        if db.create_job(job_id=job_id, user_id=user_id, input_text=full_prompt):
+            print(f"Job: {job_id} started")
+            return job_id
+        else:
+            raise Exception
     except Exception as e:
         print(f"Error starting new job: {str(e)}")
         return {
             "status": "error",
-            "message": f"Error processing request: {str(e)}"
+            "message": f"Error starting new job: {str(e)}"
         }
 
 
@@ -149,9 +169,20 @@ def query_claude(full_prompt: str, api_key: str):
     if response.status_code == 200:
         return response.json()
     else:
-        print(f"Error {response.status_code}: {response.text}")
+        print(f"Error querying LLM {response.status_code}: {response.text}")
         response.raise_for_status()
 
+
+def valid_user(user_id: str):
+    return str(user_id) == str(1)
+    # try:
+    #     with get_connection() as conn:
+    #         cur = conn.cursor()
+    #         cur.execute("SELECT 1 FROM users WHERE id = ? LIMIT 1", (user_id))
+    #         return cur.fetchone() is not None
+    # except sqlite3.Error as e:
+    #     print(f"Database error: {e}")
+    #     return False
 
 # data validation
 def valid_query(query: str):
