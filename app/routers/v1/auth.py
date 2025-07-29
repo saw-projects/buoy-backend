@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import shortuuid
 from jose import jwt, JWTError
 from starlette.status import HTTP_401_UNAUTHORIZED
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -58,7 +58,7 @@ def login_user(user_credentials: UserCredentials):
 
 
 def create_access_token(user_id: int) -> str:
-    expire = datetime.now(datetime.timezone.utc) + timedelta(seconds=JWT_EXPIRES_IN)
+    expire = datetime.now(timezone.utc) + timedelta(seconds=JWT_EXPIRES_IN)
     payload = {
         "sub": str(user_id),
         "exp": expire
@@ -66,10 +66,16 @@ def create_access_token(user_id: int) -> str:
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return token
 
-def verify_token(token: str) -> int:
+def verify_token(token: str):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user_id = int(payload.get("sub"))
+        user_id = payload.get("sub")
+        # Try to convert to int if possible, otherwise keep as string
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError):
+            # If it's not an integer, just return the string value
+            pass
         return user_id
     except JWTError:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid token")
