@@ -13,10 +13,15 @@ API supporting tech support app
     pip install -r app/requirements.txt
 3. create new database
     sqlite3 app/data/data.db < app/data/schema.sql
-4. run 
+4. build docker image
+    docker build -t buoy-app-backend .
+5. run docker container
+    docker run -p 8000:8000 buoy-app-backend
+5. run app w/o docker
     python app/main.py
     or     
     uvicorn.run("main:app", host="0.0.0.0", port=3000, reload=True)
+6. ...
 
 
 ### MVP
@@ -31,7 +36,7 @@ API supporting tech support app
 - add database to track jobs
 
 ### improvements
-- authentication/authorization
+- SSO w/ google/apple etc...
 - full security review (fastapi docs, ai, etc...)
 - agentic rag (review this)
 - full database of previous jobs, add archives page to main app
