@@ -1,6 +1,6 @@
 import sqlite3
-import datetime
 import pathlib
+from fastapi import HTTPException
 
 DB_PATH = pathlib.Path(__file__).parent / "data/data.db"
 
@@ -10,7 +10,7 @@ DB_PATH = pathlib.Path(__file__).parent / "data/data.db"
     2 create job
     3. Update job
     4. get result_text from job
-    5. update user tokens
+    5. update user llm tokens
 """
 
 
@@ -19,16 +19,50 @@ def get_connection():
     return conn
 
 
-def create_user(email: str, login_method: str = "None"):
+def create_user(user_id: str, email: str, password_hash: str):
     try:
         with get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("INSERT INTO users (email, login_method) VALUES (?, ?)", (email, login_method))
-            user_id = cur.lastrowid
+            cur.execute("INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)", (user_id, email, password_hash))
             conn.commit()
             return user_id
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="Email already registered")
     except sqlite3.Error as e:
         print(f"Database error (create_user): {e}")
+    finally:
+        conn.close()
+    return None
+
+
+def get_user_by_email(email: str):
+    try:
+        with get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, password_hash FROM users WHERE email = ?", (email,))
+            row = cur.fetchone()
+            return row if row else None
+    except sqlite3.Error as e:
+        print(f"Database error (get_user_by_email): {e}")
+    finally:
+        conn.close()
+    return None
+
+
+def update_user_auth_jwt(user_id: str, auth_jwt: str):
+    try:
+        user_id = int(user_id)
+        with get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE users SET auth_jwt = ? WHERE id = ?",
+                (auth_jwt, user_id)
+            )
+            conn.commit()
+    except sqlite3.Error as e:
+        print(f"Database error (update_user_auth_jwt): {e}")
+    finally:
+        conn.close()
 
 
 def update_tokens_by_user_id(user_id: str, tokens: int):
