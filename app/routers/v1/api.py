@@ -28,7 +28,9 @@ def health_check():
 
 
 @router.post("/process_query")
-async def process_query(request: Request, query: QueryRequest = None, user_id: int = Depends(get_current_user)):
+async def process_query(request: Request,
+                        query: QueryRequest = None,
+                        user_id: int = Depends(get_current_user)):
     """Accepts a query from a user, processes it using an ai model,
      and then returns the response.
 
@@ -47,7 +49,7 @@ async def process_query(request: Request, query: QueryRequest = None, user_id: i
             return {
                 "status": "success",
                 "job_id": job_id,
-                "job_status_URL": return_url
+                "job_status_url": return_url
             }
         else:
             print("Invalid Input")
@@ -64,7 +66,8 @@ async def process_query(request: Request, query: QueryRequest = None, user_id: i
 
 
 @router.get("/job_status/{job_id}")
-async def job_status(job_id: str, user_id: int = Depends(get_current_user)):
+async def job_status(job_id: str,
+                     user_id: int = Depends(get_current_user)):
     """An endpoint to poll to check on job status.
     """
     try:
