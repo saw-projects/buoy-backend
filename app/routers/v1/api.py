@@ -14,11 +14,13 @@ from routers.v1.auth import get_current_user
 
 router = APIRouter()
 
-API_VERSION = "api/v1"
+API_VERSION = "/api/v1"
+
 
 # =================== Classes =============================
 class QueryRequest(BaseModel):
     message: constr(min_length=MIN_CHAR_COUNT, max_length=MAX_CHAR_COUNT)  # type: ignore
+
 
 # =================== ENDPOINTS =============================
 @router.get("/health")
@@ -43,7 +45,7 @@ async def process_query(request: Request,
         if valid_query(query.message):
             job_id = await start_job(str(user_id), query.message)
 
-            base_url = str(request.base_url)
+            base_url = str(request.base_url).rstrip('/')
             return_url = f"{base_url}{API_VERSION}/job_status/{job_id}"
             print(f"return URL: {return_url}")
             return {
@@ -78,7 +80,6 @@ async def job_status(job_id: str,
             # This would require adding a function to database.py to check job ownership
             
             result = db.get_result_text_by_job_id(job_id=job_id)
-            print(f"Result: {result}")
             if result is None:
                 status = "processing"
             else:
@@ -107,7 +108,6 @@ async def start_job(user_id: str, user_query: str):
     try:
         job_id = get_job_id()
         print(f"Job: {job_id} started")
-        print(f"job id type: {type(job_id)}")
         full_prompt = f"{SYSTEM_PROMPT.strip()}\n\nHuman: {user_query.strip()}\n\nAssistant:"
         # start request to LLM
         asyncio.create_task(process_job(job_id, full_prompt))
@@ -158,6 +158,7 @@ def query_claude(full_prompt: str, api_key: str):
 
 def valid_user(user_id: str):
     return str(user_id) == str(TEST_USER)
+
 
 # data validation
 def valid_query(query: str):
